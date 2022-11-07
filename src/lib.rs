@@ -4,6 +4,7 @@
 pub mod math;
 pub mod kinematics;
 pub mod kinetics;
+pub mod estimation;
 pub mod control;
 pub mod simulation;
 

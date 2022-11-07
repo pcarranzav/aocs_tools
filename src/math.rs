@@ -9,7 +9,7 @@ use vecmath::Vector3;
 /// Good old Pi
 pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
-/// Compute the tilde matrix for a vector
+/// Compute the tilde matrix for a vector (i.e. matrix representation of the cross product)
 pub fn vec3_tilde(vec: Vector3<f64>) -> Matrix3<f64>
 {
     [
