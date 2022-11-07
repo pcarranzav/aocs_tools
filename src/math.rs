@@ -42,7 +42,7 @@ pub fn mat3_eq(a: &Matrix3<f64>, b: &Matrix3<f64>) -> bool {
 }
 
 /// Normalize a quaternion so that the scalar part is positive
-pub fn quaternion_positive_scalar(q: Quaternion<f64>) -> Quaternion<f64> {
+pub fn quat_positive_scalar(q: Quaternion<f64>) -> Quaternion<f64> {
     if q.0 < 0.0 {
         (-q.0, [-q.1[0], -q.1[1], -q.1[2]])
     } else {
@@ -51,18 +51,18 @@ pub fn quaternion_positive_scalar(q: Quaternion<f64>) -> Quaternion<f64> {
 }
 
 /// Normalize a quaternion so that it has unit length
-pub fn quaternion_unit_length(q: Quaternion<f64>) -> Quaternion<f64> {
+pub fn quat_unit_length(q: Quaternion<f64>) -> Quaternion<f64> {
     let len = quaternion::len(q);
     (q.0 / len, [q.1[0] / len, q.1[1] / len, q.1[2] / len])
 }
 
 /// Normalize a quaternion so that it has unit length and the scalar part is positive
-pub fn quaternion_normalize(q: Quaternion<f64>) -> Quaternion<f64> {
-    quaternion_positive_scalar(quaternion_unit_length(q))
+pub fn quat_normalize(q: Quaternion<f64>) -> Quaternion<f64> {
+    quat_positive_scalar(quat_unit_length(q))
 }
 
 /// Computes whether two (already normalized) quaternions are equal within float precision
-pub fn quaternion_eq(a: &Quaternion<f64>, b: &Quaternion<f64>) -> bool {
+pub fn quat_eq(a: &Quaternion<f64>, b: &Quaternion<f64>) -> bool {
     for i in 0..3 {
         if (a.1[i] - b.1[i]).abs() > EPSILON {
             return false;
@@ -87,10 +87,10 @@ mod tests {
     }
 
     #[test]
-    fn test_quaternion_normalize() {
+    fn test_quat_normalize() {
         // Note the norm is 8.0:
-        let q = quaternion_normalize((-4.0, [2.0, -6.0, (8.0_f64).sqrt()]));
+        let q = quat_normalize((-4.0, [2.0, -6.0, (8.0_f64).sqrt()]));
         assert!((quaternion::len(q) - 1.0).abs() < EPSILON);
-        assert!(quaternion_eq(&q, &(0.5, [-0.25, 0.75, -1.0/(8.0_f64).sqrt()])));
+        assert!(quat_eq(&q, &(0.5, [-0.25, 0.75, -1.0/(8.0_f64).sqrt()])));
     }
 }

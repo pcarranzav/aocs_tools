@@ -3,7 +3,7 @@
 //! convert between different representations of rotations.
 
 use quaternion::Quaternion;
-use vecmath::{Vector3, Matrix3};
+use vecmath::{Vector3, Matrix3, Matrix4};
 
 use crate::math;
 
@@ -63,7 +63,7 @@ pub fn euler313_to_dcm(theta: &Vector3<f64>) -> Matrix3<f64> {
 }
 
 /// Convert a quaternion to its corresponding rotation matrix
-pub fn quaternion_to_dcm(q: &Quaternion<f64>) -> Matrix3<f64> {
+pub fn quat_to_dcm(q: &Quaternion<f64>) -> Matrix3<f64> {
     let q0 = q.0;
     let q1 = q.1[0];
     let q2 = q.1[1];
@@ -77,7 +77,7 @@ pub fn quaternion_to_dcm(q: &Quaternion<f64>) -> Matrix3<f64> {
 }
 
 /// Convert a rotation matrix to its corresponding quaternion
-pub fn dcm_to_quaternion(dcm: &Matrix3<f64>) -> Quaternion<f64> {
+pub fn dcm_to_quat(dcm: &Matrix3<f64>) -> Quaternion<f64> {
     let trace = dcm[0][0] + dcm[1][1] + dcm[2][2];
     let q_squares = [
         (1.0 + trace)/4.0,
@@ -112,7 +112,42 @@ pub fn dcm_to_quaternion(dcm: &Matrix3<f64>) -> Quaternion<f64> {
         },
         _ => panic!("Invalid index"),
     };
-    math::quaternion_normalize(q)
+    math::quat_normalize(q)
+}
+
+/// Differential Equation Matrix B for a quaternion
+/// Such that qdot = 1/2 * B * [0, omega]'
+/// where omega is the angular velocity,
+/// and B is orthogonal :)
+pub fn quat_differential_equation_matrix(q: Quaternion<f64>) -> Matrix4<f64> {
+    let q0 = q.0;
+    let q1 = q.1[0];
+    let q2 = q.1[1];
+    let q3 = q.1[2];
+
+    [
+        [q0, -q1, -q2, -q3],
+        [q1, q0, -q3, q2],
+        [q2, q3, q0, -q1],
+        [q3, -q2, q1, q0],
+    ]
+}
+
+/// Differential equation for quaternions, solve for qdot (time derivative of the quaternion) given omega (angular velocity)
+pub fn omega_to_qdot(q: Quaternion<f64>, omega: Vector3<f64>) -> Quaternion<f64> {
+    let b = quat_differential_equation_matrix(q);
+    let v = [0.0, omega[0]*0.5, omega[1]*0.5, omega[2]*0.5];
+    let qdot_vec = vecmath::row_mat4_transform(b, v);
+    (qdot_vec[0], [qdot_vec[1], qdot_vec[2], qdot_vec[3]])
+}
+
+/// Differential equation for quaternions, solve for omega (angular velocity) given qdot (time derivative of the quaternion)
+pub fn qdot_to_omega(q: Quaternion<f64>, q_dot: Quaternion<f64>) -> Vector3<f64> {
+    let b = quat_differential_equation_matrix(q);
+    let b_inv = vecmath::mat4_transposed(b); // B matrix is orthogonal!
+    let q_dot_v = [q_dot.0*2.0, q_dot.1[0]*2.0, q_dot.1[1]*2.0, q_dot.1[2]*2.0];
+    let omega_vec = vecmath::row_mat4_transform(b_inv, q_dot_v);
+    [omega_vec[1], omega_vec[2], omega_vec[3]]
 }
 
 #[cfg(test)]
@@ -120,15 +155,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_dcm_to_quaternion() {
+    fn test_dcm_to_quat() {
         // First with identity matrix:
         let dcm = [
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0],
         ];
-        let q = dcm_to_quaternion(&dcm);
-        assert!(math::quaternion_eq(&q, &(1.0, [0.0, 0.0, 0.0])));
+        let q = dcm_to_quat(&dcm);
+        assert!(math::quat_eq(&q, &(1.0, [0.0, 0.0, 0.0])));
 
         // Now with a rotation around y:
         let dcm = [
@@ -136,15 +171,15 @@ mod tests {
             [0.0, 1.0, 0.0],
             [0.0, 0.0, -1.0],
         ];
-        let q = dcm_to_quaternion(&dcm);
-        assert!(math::quaternion_eq(&q, &(0.0, [0.0, 1.0, 0.0])));
+        let q = dcm_to_quat(&dcm);
+        assert!(math::quat_eq(&q, &(0.0, [0.0, 1.0, 0.0])));
     }
 
     #[test]
-    fn test_quaternion_to_dcm() {
+    fn test_quat_to_dcm() {
         // First with identity quaternion:
         let q = (1.0, [0.0, 0.0, 0.0]);
-        let dcm = quaternion_to_dcm(&q);
+        let dcm = quat_to_dcm(&q);
         assert!(math::mat3_eq(&dcm, &[
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
@@ -153,7 +188,7 @@ mod tests {
 
         // Now with a rotation around y:
         let q = (0.0, [0.0, 1.0, 0.0]);
-        let dcm = quaternion_to_dcm(&q);
+        let dcm = quat_to_dcm(&q);
         assert!(math::mat3_eq(&dcm, &[
             [-1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
