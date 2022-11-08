@@ -1,10 +1,11 @@
-//! Simulation module (TODO)
+//! Simulation module (WIP)
 
+use quaternion::Quaternion;
 use vecmath::{Matrix3, Vector3};
 
 use crate::{
     kinematics::{self, mrp_differential_equation_matrix},
-    math::{self, Vector6, VectorN},
+    math::{self, Vector6, VectorN, Vector7}, kinetics,
 };
 
 /// Generic RK4 simulator.
@@ -87,16 +88,8 @@ where
             math::mat3_scale(mrp_differential_equation_matrix(mrp), 0.25),
             omega,
         );
-        // w_dot = Iinv*(-tilde(w)*I*w + u(t,x));
-
-        let omega_tilde = math::vec3_tilde(omega);
-        let omega_tilde_inertia_omega =
-            vecmath::row_mat3_transform(omega_tilde, vecmath::row_mat3_transform(inertia, omega));
-        let inertia_omega_dot = vecmath::vec3_sub(
-            vecmath::vec3_add(control_torque(t, x), disturbance_torque(t, x)),
-            omega_tilde_inertia_omega,
-        );
-        let omega_dot = vecmath::row_mat3_transform(inertia_inverse, inertia_omega_dot);
+        let torque = vecmath::vec3_add(control_torque(t, x), disturbance_torque(t, x));
+        let omega_dot = kinetics::rigid_body_omega_dot(inertia, omega, torque, Some(inertia_inverse));
         [
             mrp_dot[0],
             mrp_dot[1],
@@ -122,6 +115,64 @@ where
         } else {
             *x
         }
+    };
+    rk4_simulator(x_dot, x0, step, duration, Some(p))
+}
+
+/// Simulator for a rigid spacecraft's attitude using a quaternion representation
+/// The state representation is a 7D vector, with the first 4 elements being the quaternion attitude and the last 3 the angular velocity in the B frame
+pub fn quat_attitude_simulator<U, D>(
+    step: f64,
+    duration: f64,
+    inertia: Matrix3<f64>,
+    initial_quat: Quaternion<f64>,
+    initial_omega: Vector3<f64>,
+    control_torque: U,
+    disturbance_torque: D,
+) -> (Vec<Vector7>, Vec<f64>)
+where
+    U: Fn(f64, &Vector7) -> Vector3<f64>,
+    D: Fn(f64, &Vector7) -> Vector3<f64>,
+{
+    let x0 = [
+        initial_quat.0,
+        initial_quat.1[0],
+        initial_quat.1[1],
+        initial_quat.1[2],
+        initial_omega[0],
+        initial_omega[1],
+        initial_omega[2],
+    ];
+    let inertia_inverse = vecmath::mat3_inv(inertia);
+
+    let x_dot = |t: f64, x: &Vector7| {
+        let q: Quaternion<f64> = (x[0], [x[1], x[2], x[3]]);
+        let omega = [x[4], x[5], x[6]];
+        let q_dot = kinematics::omega_to_qdot(q, omega);
+        let torque = vecmath::vec3_add(control_torque(t, x), disturbance_torque(t, x));
+        let omega_dot = kinetics::rigid_body_omega_dot(inertia, omega, torque, Some(inertia_inverse));
+        [
+            q_dot.0,
+            q_dot.1[0],
+            q_dot.1[1],
+            q_dot.1[2],
+            omega_dot[0],
+            omega_dot[1],
+            omega_dot[2],
+        ]
+    };
+    let p = |x: &Vector7| {
+        let q: Quaternion<f64> = (x[0], [x[1], x[2], x[3]]);
+        let q_normalized = math::quat_normalize(q);
+        [
+            q_normalized.0,
+            q_normalized.1[0],
+            q_normalized.1[1],
+            q_normalized.1[2],
+            x[4],
+            x[5],
+            x[6],
+        ]
     };
     rk4_simulator(x_dot, x0, step, duration, Some(p))
 }

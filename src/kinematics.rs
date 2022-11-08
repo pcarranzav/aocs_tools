@@ -193,16 +193,6 @@ pub fn dcm_to_mrp(dcm: Matrix3<f64>) -> Vector3<f64> {
     quat_to_mrp(q)
 }
 
-// % FN = FB*BN (sigmas are row vectors)
-// function sigmaFN = MRPaddition(sigmaFB, sigmaBN)
-//   denom = 1+ norm(sigmaBN)^2 * norm(sigmaFB)^2 - 2* sigmaBN'*sigmaFB;
-//   if norm(denom) < 0.0001
-//     sigmaFN = MRPaddition(sigmaFB, -sigmaBN/(norm(sigmaBN)^2));
-//   else
-//     sigmaFN = ( (1-norm(sigmaBN)^2)*sigmaFB + (1-norm(sigmaFB)^2)*sigmaBN - 2* cross(sigmaFB, sigmaBN) ) / denom;
-//   end
-// end
-
 /// Compute the "shadow" MRP (i.e. the equivalent to the original plus a 360 degree rotation)
 pub fn mrp_shadow(mrp: Vector3<f64>) -> Vector3<f64> {
     let mrp_norm_squared = vecmath::vec3_square_len(mrp);

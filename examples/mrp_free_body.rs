@@ -1,4 +1,5 @@
-use aocs_tools::{control::zero_torque, plotting::plot_mrp_simulation};
+//! This example runs a simulation of a free body in 3D space, using a Modified Rodrigues Parameters attitude representation
+use aocs_tools::{control::mrp_zero_torque, plotting::plot_mrp_simulation};
 
 fn main() {
     let inertia = [[1.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 2.0]];
@@ -10,8 +11,8 @@ fn main() {
         inertia,
         initial_mrp,
         initial_omega,
-        zero_torque,
-        zero_torque,
+        mrp_zero_torque,
+        mrp_zero_torque,
     );
     plot_mrp_simulation(&x, &t);
 }
