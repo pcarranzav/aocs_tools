@@ -7,6 +7,8 @@ use vecmath::{Vector3, Matrix3, Matrix4};
 
 use crate::math;
 
+const MRP_ADD_DENOM_TOLERANCE: f64 = 0.0001;
+
 /// Compute the matrix for a rotation around the third axis (z)
 pub fn euler3_rotation_degrees(z_angle: f64) -> Matrix3<f64> {
     let c = z_angle.to_radians().cos();
@@ -150,6 +152,103 @@ pub fn qdot_to_omega(q: Quaternion<f64>, q_dot: Quaternion<f64>) -> Vector3<f64>
     [omega_vec[1], omega_vec[2], omega_vec[3]]
 }
 
+/// Convert Modified Rodrigues Parameters to a rotation matrix
+pub fn mrp_to_dcm(mrp: Vector3<f64>) -> Matrix3<f64> {
+    let mrp_norm_squared = vecmath::vec3_square_len(mrp);
+    let eye = vecmath::mat3_id::<f64>();
+    let mrp_tilde = math::vec3_tilde(mrp);
+    let divisor = (mrp_norm_squared+1.0)*(mrp_norm_squared+1.0);
+    let m1 = math::mat3_scale(vecmath::row_mat3_mul(mrp_tilde, mrp_tilde), 8.0/divisor);
+    let m2 = math::mat3_scale(mrp_tilde, 4.0*(1.0-mrp_norm_squared)/divisor);
+    vecmath::mat3_add(eye, vecmath::mat3_sub(m1, m2))
+}
+
+/// Convert a quaternion to Modified Rodrigues Parameters
+pub fn quat_to_mrp(q: Quaternion<f64>) -> Vector3<f64> {
+    vecmath::vec3_scale(q.1, 1.0/(1.0+q.0))
+}
+
+/// Convert Modified Rodrigues Parameters to a quaternion
+pub fn mrp_to_quat(mrp: Vector3<f64>) -> Quaternion<f64> {
+    let mrp_norm_squared = vecmath::vec3_square_len(mrp);
+    let q0 = (1.0-mrp_norm_squared)/(1.0+mrp_norm_squared);
+    let q1 = 2.0*mrp[0]/(1.0+mrp_norm_squared);
+    let q2 = 2.0*mrp[1]/(1.0+mrp_norm_squared);
+    let q3 = 2.0*mrp[2]/(1.0+mrp_norm_squared);
+    (q0, [q1, q2, q3])
+}
+
+/// Convert a rotation matrix to Modified Rodrigues Parameters
+pub fn dcm_to_mrp(dcm: Matrix3<f64>) -> Vector3<f64> {
+    let q = dcm_to_quat(&dcm);
+    quat_to_mrp(q)
+}
+
+// % FN = FB*BN (sigmas are row vectors)
+// function sigmaFN = MRPaddition(sigmaFB, sigmaBN)
+//   denom = 1+ norm(sigmaBN)^2 * norm(sigmaFB)^2 - 2* sigmaBN'*sigmaFB;
+//   if norm(denom) < 0.0001
+//     sigmaFN = MRPaddition(sigmaFB, -sigmaBN/(norm(sigmaBN)^2));
+//   else
+//     sigmaFN = ( (1-norm(sigmaBN)^2)*sigmaFB + (1-norm(sigmaFB)^2)*sigmaBN - 2* cross(sigmaFB, sigmaBN) ) / denom;
+//   end
+// end
+
+/// Compute the "shadow" MRP (i.e. the equivalent to the original plus a 360 degree rotation)
+pub fn mrp_shadow(mrp: Vector3<f64>) -> Vector3<f64> {
+    let mrp_norm_squared = vecmath::vec3_square_len(mrp);
+    vecmath::vec3_scale(mrp, -1.0/mrp_norm_squared)
+}
+
+/// Compute the conjugate MRP (i.e. the inverse rotation)
+pub fn mrp_conj(mrp: Vector3<f64>) -> Vector3<f64> {
+    vecmath::vec3_scale(mrp, -1.0)
+}
+
+/// Add two Modified Rodrigues Parameters
+/// i.e. if the two MRPs represent DCMs FB and BN
+/// This gives the MRP corresponding to DCM FN = FB*BN
+pub fn mrp_add(a: Vector3<f64>, b: Vector3<f64>) -> Vector3<f64> {
+    let a_norm_squared = vecmath::vec3_square_len(a);
+    let b_norm_squared = vecmath::vec3_square_len(b);
+    let denom = 1.0 + b_norm_squared*a_norm_squared - 2.0*vecmath::vec3_dot(a, b);
+    if denom.abs() < MRP_ADD_DENOM_TOLERANCE {
+        mrp_add(a, mrp_shadow(b))
+    } else {
+        let m1 = vecmath::vec3_scale(a, (1.0-b_norm_squared)/denom);
+        let m2 = vecmath::vec3_scale(b, (1.0-a_norm_squared)/denom);
+        let m3 = vecmath::vec3_scale(vecmath::vec3_cross(a, b), -2.0/denom);
+        vecmath::vec3_add(m1, vecmath::vec3_add(m2, m3))
+    }
+}
+
+/// Subtract two Modified Rodrigues Parameters
+pub fn mrp_sub(a: Vector3<f64>, b: Vector3<f64>) -> Vector3<f64> {
+    mrp_add(a, mrp_conj(b))
+}
+
+/// Compute the MRP differential equation matrix
+/// This is the matrix B that maps angular velocity to MRP rate:
+/// mrp_dot = 1/4 * B * omega
+pub fn mrp_differential_equation_matrix(mrp: Vector3<f64>) -> Matrix3<f64> {
+    let mrp_norm_squared = vecmath::vec3_square_len(mrp);
+    let eye = vecmath::mat3_id::<f64>();
+    let mrp_tilde = math::vec3_tilde(mrp);
+    let m1 = math::mat3_scale(eye, 1.0-mrp_norm_squared);
+    let m2 = math::mat3_scale(mrp_tilde, 2.0);
+    let m3 = math::mat3_scale(math::vec3_outer_product(mrp, mrp), 2.0);
+    vecmath::mat3_add(m1, vecmath::mat3_add(m2, m3))
+}
+
+/// Compute the inverse of the MRP differential equation matrix
+/// This is the matrix M that maps MRP rate to angular velocity:
+/// omega = 4 * M * mrp_dot
+pub fn mrp_differential_equation_matrix_inv(mrp: Vector3<f64>) -> Matrix3<f64> {
+    let b = mrp_differential_equation_matrix(mrp);
+    let div_factor = 1.0 + vecmath::vec3_square_len(mrp);
+    math::mat3_scale(vecmath::mat3_transposed(b), 1.0 / (div_factor*div_factor))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,5 +295,20 @@ mod tests {
         ]));
     }
 
+    #[test]
+    fn test_quat_to_mrp_to_quat() {
+        // First with identity quaternion:
+        let q = (1.0, [0.0, 0.0, 0.0]);
+        let mrp = quat_to_mrp(q);
+        assert!(math::vec3_eq(&mrp, &[0.0, 0.0, 0.0]));
+        let q2 = mrp_to_quat(mrp);
+        assert!(math::quat_eq(&q, &q2));
 
+        // Now with a rotation around y:
+        let q = (0.0, [0.0, 1.0, 0.0]);
+        let mrp = quat_to_mrp(q);
+        assert!(math::vec3_eq(&mrp, &[0.0, 1.0, 0.0]));
+        let q2 = mrp_to_quat(mrp);
+        assert!(math::quat_eq(&q, &q2));
+    }
 }

@@ -10,12 +10,29 @@ use vecmath::Vector3;
 pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
 /// Compute the tilde matrix for a vector (i.e. matrix representation of the cross product)
-pub fn vec3_tilde(vec: Vector3<f64>) -> Matrix3<f64>
-{
+pub fn vec3_tilde(vec: Vector3<f64>) -> Matrix3<f64> {
     [
         [0.0, -vec[2], vec[1]],
         [vec[2], 0.0, -vec[0]],
         [-vec[1], vec[0], 0.0],
+    ]
+}
+
+/// Compute the outer product between two 3D vectors
+pub fn vec3_outer_product(a: Vector3<f64>, b: Vector3<f64>) -> Matrix3<f64> {
+    [
+        [a[0] * b[0], a[0] * b[1], a[0] * b[2]],
+        [a[1] * b[0], a[1] * b[1], a[1] * b[2]],
+        [a[2] * b[0], a[2] * b[1], a[2] * b[2]],
+    ]
+}
+
+/// Multiply a matrix by a scalar
+pub fn mat3_scale(mat: Matrix3<f64>, scale: f64) -> Matrix3<f64> {
+    [
+        [mat[0][0]*scale, mat[0][1]*scale, mat[0][2]*scale],
+        [mat[1][0]*scale, mat[1][1]*scale, mat[1][2]*scale],
+        [mat[2][0]*scale, mat[2][1]*scale, mat[2][2]*scale],
     ]
 }
 
@@ -29,13 +46,21 @@ pub fn sind(x: f64) -> f64 {
     x.to_radians().sin()
 }
 
+/// Compute whether two 3D vectors are equal within float precision
+pub fn vec3_eq(a: &Vector3<f64>, b: &Vector3<f64>) -> bool {
+    for i in 0..3 {
+        if (a[i] - b[i]).abs() > EPSILON {
+            return false;
+        }
+    }
+    true
+}
+
 /// Compute whether two 3x3 matrices are equal within float precision
 pub fn mat3_eq(a: &Matrix3<f64>, b: &Matrix3<f64>) -> bool {
     for i in 0..3 {
-        for j in 0..3 {
-            if (a[i][j] - b[i][j]).abs() > EPSILON {
-                return false;
-            }
+        if !vec3_eq(&a[i], &b[i]) {
+            return false;
         }
     }
     true
