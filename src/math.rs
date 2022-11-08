@@ -27,6 +27,16 @@ pub fn vec3_outer_product(a: Vector3<f64>, b: Vector3<f64>) -> Matrix3<f64> {
     ]
 }
 
+/// Scale a vector of arbitrary size by a scalar
+pub fn vecn_scale(vec: &Vec<f64>, scalar: f64) -> Vec<f64> {
+    vec.iter().map(|&x| x * scalar).collect()
+}
+
+/// Add two vectors of arbitrary size
+pub fn vecn_add(a: &Vec<f64>, b: &Vec<f64>) -> Vec<f64> {
+    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
+}
+
 /// Multiply a matrix by a scalar
 pub fn mat3_scale(mat: Matrix3<f64>, scale: f64) -> Matrix3<f64> {
     [
