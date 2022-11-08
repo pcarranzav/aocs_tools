@@ -9,6 +9,69 @@ use vecmath::Vector3;
 /// Good old Pi
 pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
+
+/// 6D float vector, useful for simulations using MRPs
+pub type Vector6 = [f64; 6];
+/// 7D float vector, useful for simulations using quaternions
+pub type Vector7 = [f64; 7];
+/// Trait for arrays behaving as arbitrary sized vectors
+pub trait VectorN {
+    /// Add the vector to another vector
+    fn vec_add(&self, other: &Self) -> Self;
+    /// Scale the vector by a scalar
+    fn vec_scale(&self, scalar: f64) -> Self;
+}
+
+impl VectorN for [f64; 6] {
+    fn vec_add(&self, other: &Self) -> Self {
+        [
+            self[0] + other[0],
+            self[1] + other[1],
+            self[2] + other[2],
+            self[3] + other[3],
+            self[4] + other[4],
+            self[5] + other[5],
+        ]
+    }
+
+    fn vec_scale(&self, scalar: f64) -> Self {
+        [
+            self[0] * scalar,
+            self[1] * scalar,
+            self[2] * scalar,
+            self[3] * scalar,
+            self[4] * scalar,
+            self[5] * scalar,
+        ]
+    }
+}
+
+impl VectorN for [f64; 7] {
+    fn vec_add(&self, other: &Self) -> Self {
+        [
+            self[0] + other[0],
+            self[1] + other[1],
+            self[2] + other[2],
+            self[3] + other[3],
+            self[4] + other[4],
+            self[5] + other[5],
+            self[6] + other[6],
+        ]
+    }
+
+    fn vec_scale(&self, scalar: f64) -> Self {
+        [
+            self[0] * scalar,
+            self[1] * scalar,
+            self[2] * scalar,
+            self[3] * scalar,
+            self[4] * scalar,
+            self[5] * scalar,
+            self[6] * scalar,
+        ]
+    }
+}
+
 /// Compute the tilde matrix for a vector (i.e. matrix representation of the cross product)
 pub fn vec3_tilde(vec: Vector3<f64>) -> Matrix3<f64> {
     [
