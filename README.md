@@ -7,10 +7,9 @@ I'm mostly writing this to practice as I learn Rust, so do not treat it as produ
 It is early work in progress, but the plan is to include utilities for:
 
 - Kinematics: computing and describing rotations using various attitude representations (Euler angles, rotation matrices, quaternions, Modified Rodrigues parameters, etc), as well as describing relative angular speeds and orbital reference frames (TODO).
-- Kinetics (TODO): describing the equations of motion for rotating bodies based on their Moments of Inertia.
 - Estimation (TODO): Producing attitude values based on sensor readings. I'll include Triad, QUEST and OLAE probably. I may or may not add an Extended Kalman Filter, depending on whether I have time for it...
 - Control (TODO): applying feedback laws to modify the attitude and/or rate to match a desired target.
-- Simulation (TODO): using numerical methods to analyze specific instances of a body rotating based on its kinetics and possibly including a control law.
+- Simulation (TODO): using numerical methods to analyze specific instances of a body rotating based on its kinetics and including a control law.
 
 It is mostly based on the courses provided in the [Spacecraft Dynamics and Control Specialization in Coursera](https://www.coursera.org/specializations/spacecraft-dynamics-control?), by Professor Schaub from CU-Boulder. We'll use Professor Schaub's notation.
 

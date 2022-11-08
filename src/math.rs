@@ -9,7 +9,6 @@ use vecmath::Vector3;
 /// Good old Pi
 pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
-
 /// 6D float vector, useful for simulations using MRPs
 pub type Vector6 = [f64; 6];
 /// 7D float vector, useful for simulations using quaternions
@@ -103,9 +102,9 @@ pub fn vecn_add(a: &Vec<f64>, b: &Vec<f64>) -> Vec<f64> {
 /// Multiply a matrix by a scalar
 pub fn mat3_scale(mat: Matrix3<f64>, scale: f64) -> Matrix3<f64> {
     [
-        [mat[0][0]*scale, mat[0][1]*scale, mat[0][2]*scale],
-        [mat[1][0]*scale, mat[1][1]*scale, mat[1][2]*scale],
-        [mat[2][0]*scale, mat[2][1]*scale, mat[2][2]*scale],
+        [mat[0][0] * scale, mat[0][1] * scale, mat[0][2] * scale],
+        [mat[1][0] * scale, mat[1][1] * scale, mat[1][2] * scale],
+        [mat[2][0] * scale, mat[2][1] * scale, mat[2][2] * scale],
     ]
 }
 
@@ -176,11 +175,7 @@ mod tests {
     #[test]
     fn test_tilde() {
         let result: Matrix3<f64> = vec3_tilde([1.0, 2.0, 3.0]);
-        let expected:  Matrix3<f64> = [
-            [0.0, -3.0, 2.0],
-            [3.0, 0.0, -1.0],
-            [-2.0, 1.0, 0.0],
-        ];
+        let expected: Matrix3<f64> = [[0.0, -3.0, 2.0], [3.0, 0.0, -1.0], [-2.0, 1.0, 0.0]];
         assert!(mat3_eq(&result, &expected));
     }
 
@@ -189,6 +184,6 @@ mod tests {
         // Note the norm is 8.0:
         let q = quat_normalize((-4.0, [2.0, -6.0, (8.0_f64).sqrt()]));
         assert!((quaternion::len(q) - 1.0).abs() < EPSILON);
-        assert!(quat_eq(&q, &(0.5, [-0.25, 0.75, -1.0/(8.0_f64).sqrt()])));
+        assert!(quat_eq(&q, &(0.5, [-0.25, 0.75, -1.0 / (8.0_f64).sqrt()])));
     }
 }
